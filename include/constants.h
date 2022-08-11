@@ -1,0 +1,19 @@
+#ifndef CONSTANTS_H
+#define CONSTANTS_H
+
+#define DISCOVER_PORT 3000
+#define COMMUNICATION_PORT 3333
+#define MAX_MESSAGE_SIZE 256
+#define HOSTNAME_SIZE 256
+#define MAC_ADDRESS_SIZE 32
+
+// Machine Status
+#define AWAKEN 1
+#define ASLEEP 0
+
+// Packet Types
+#define SLEEP_STATUS_REQUEST 1
+#define SLEEP_SERVICE_DISCOVERY 2
+#define SLEEP_SERVICE_EXIT 3
+
+#endif
