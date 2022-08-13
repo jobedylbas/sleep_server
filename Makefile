@@ -1,7 +1,7 @@
 export ROOT_DIR=${PWD}
 
 CXX=g++
-CFLAGS=-Wall -pthread
+CFLAGS=-Wall -pthread -g
 
 main: manager
 

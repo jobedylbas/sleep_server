@@ -17,13 +17,15 @@ using namespace std;
 
 class Manager {
     private:
-        MACHINE me;
         mutex* mtx;
         list<MACHINE> machines;
         int sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp, void *newp, size_t newlen);
         int getHostname(char *buf, size_t buflen);
+        unsigned char* createMagicPacket(unsigned char* macAddress);
+        unsigned char* getMacAddress();
     public:
         Manager();
+        MACHINE me;
         int add(MACHINE machine); // Returns a bool for operation
         int remove(MACHINE machine);
         int change(MACHINE machine, int status);

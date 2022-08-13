@@ -6,7 +6,7 @@
 typedef struct _machine {
     char hostname[HOSTNAME_SIZE];
     int status;
-    char* mac_address;
+    unsigned char mac_address[6];
     char* ip_address;
 } MACHINE;
 

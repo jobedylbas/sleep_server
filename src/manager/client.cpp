@@ -15,6 +15,12 @@
 #include <sys/syscall.h>    // SYS_sysctl
 #include <sys/sysctl.h>     // CTL_KERN, KERN_HOSTNAME
 #include <unistd.h>         // syscall
+#include <sys/ioctl.h>
+#include <net/if.h> 
+#include <sys/ioctl.h>
+#include <net/if.h>
+#include <net/if_dl.h>
+#include <errno.h>
 
 int Client::sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp, void *newp, size_t newlen)
 {
@@ -35,12 +41,21 @@ Client::Client() {
     getHostname(me.hostname, HOSTNAME_SIZE);
     host_entry = gethostbyname(me.hostname);
     me.status = AWAKEN;
+    memcpy(me.mac_address, getMacAddress(), sizeof(me.mac_address));
     me.ip_address = inet_ntoa(*((struct in_addr*) host_entry->h_addr_list[0]));
+    manager.ip_address = "0";
+    // cout << "|\t\thostname\t\t|\tMAC Address\t|\tIP Address\t|" << endl;
 }
 
 void Client::printManager() {
-    cout << "|\t\thostname\t\t|\tMAC Address\t|\tIP Address\t|" << endl;
-    std::cout << "|\t" << manager.hostname << "\t\t|\t\t\t|\t" << manager.ip_address << "\t|\t";
+    if (strcmp(manager.ip_address, "0")) {
+        std::cout << "|\t" << manager.hostname;
+        printf("\t|\t%02X:%02X:%02X:%02X:%02X:%02X\t|\t", manager.mac_address[0], manager.mac_address[1], 
+            manager.mac_address[2], manager.mac_address[3], manager.mac_address[4], manager.mac_address[5]);
+    
+        std::cout << "\t\t|\t" << manager.ip_address << "\t|\t";
+    }
+   
 }
 
 void Client::leave() {
@@ -61,4 +76,47 @@ void Client::waitForCommand() {
             cout << "Command not found." << endl;
         }
     }
+}
+
+unsigned char* Client::getMacAddress() {
+    // unsigned char mac_address[6];
+    int         mib[6];
+    size_t len;
+    char            *buf;
+    unsigned char       *ptr;
+    struct if_msghdr    *ifm;
+    struct sockaddr_dl  *sdl;
+
+    mib[0] = CTL_NET;
+    mib[1] = AF_ROUTE;
+    mib[2] = 0;
+    mib[3] = AF_LINK;
+    mib[4] = NET_RT_IFLIST;
+    // mib[5] = 1;
+    if ((mib[5] = if_nametoindex("en0")) == 0) {
+        perror("if_nametoindex error");
+        return NULL;
+    }
+
+    if (sysctl(mib, 6, NULL, &len, NULL, 0) < 0) {
+        perror("sysctl 1 error");
+        return NULL;
+    }
+
+    if ((buf = (char*)malloc(len)) == NULL) {
+        perror("malloc error");
+        return NULL;
+    }
+
+    if (sysctl(mib, 6, buf, &len, NULL, 0) < 0) {
+        perror("sysctl 2 error");
+        return NULL;
+    }
+
+    ifm = (struct if_msghdr *)buf;
+    sdl = (struct sockaddr_dl *)(ifm + 1);
+    ptr = (unsigned char *)LLADDR(sdl);
+    // printf("%02x:%02x:%02x:%02x:%02x:%02x\n", *ptr, *(ptr+1), *(ptr+2),
+	// 		*(ptr+3), *(ptr+4), *(ptr+5));
+    return ptr;
 }

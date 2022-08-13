@@ -8,11 +8,13 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <string.h>
+#include<string>
+#include "stdint.h"
 #include "../include/constants.h"
 #include "../include/manager.h"
 #include "../include/packet.h"
 #include "../include/client.h"
+
 using namespace std;
 
 void* discover(void *arg);
@@ -72,18 +74,18 @@ void* discover(void *arg) {
     if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
         errno_abort("socket");
 #ifndef RECV_ONLY
-    // if(type == 1){
+    if(type == 1) {
         if (setsockopt(fd, SOL_SOCKET, SO_BROADCAST,
                     &trueflag, sizeof trueflag) < 0)
             errno_abort("setsockopt");
-
-        memset(&send_addr, 0, sizeof send_addr);
-        send_addr.sin_family = AF_INET;
-        send_addr.sin_port = (in_port_t) htons(DISCOVER_PORT);
-        // broadcasting address for unix (?)
-        // inet_aton("191.168.0.255", &send_addr.sin_addr);
-        send_addr.sin_addr.s_addr = htonl(INADDR_BROADCAST);
-    // } 
+    }
+    memset(&send_addr, 0, sizeof send_addr);
+    send_addr.sin_family = AF_INET;
+    send_addr.sin_port = (in_port_t) htons(DISCOVER_PORT);
+    // broadcasting address for unix (?)
+    // inet_aton("191.168.0.255", &send_addr.sin_addr);
+    send_addr.sin_addr.s_addr = htonl(INADDR_BROADCAST);
+// } 
 #endif // ! RECV_ONLY
     // else {
 #ifndef SEND_ONLY
@@ -95,26 +97,41 @@ void* discover(void *arg) {
         recv_addr.sin_family = AF_INET;
         recv_addr.sin_port = (in_port_t) htons(DISCOVER_PORT);
         recv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-
-        if (bind(fd, (struct sockaddr*) &recv_addr, sizeof recv_addr) < 0)
-            errno_abort("bind");
+        
+        if(type == 1) {
+            if (bind(fd, (struct sockaddr*) &recv_addr, sizeof recv_addr) < 0)
+                errno_abort("bind");
+        }
+        
     // }
 #endif // ! SEND_ONLY
-    Packet packetTosend = createPacket(SLEEP_SERVICE_DISCOVERY, 0, 0, "");
     // void *received = NULL;
-    Packet received;
+    Packet received, packetToSend;
+    if(type == 1) {
+        packetToSend = createPacket(SLEEP_SERVICE_DISCOVERY, 0, 0, manager.me.hostname, manager.me.mac_address);
+    } else {
+        packetToSend = createPacket(SLEEP_SERVICE_DISCOVERY, 0, 0, client.me.hostname, client.me.mac_address);
+    }
+    // cout << "teste";
     socklen_t recv_addr_len = sizeof(recv_addr);
     while (1) {
+        usleep(1000000/2);
 #ifndef RECV_ONLY
+        
         if(type == 1) {
-            usleep(1000000);
-            if (sendto(fd, (void *)&packetTosend, sizeof(Packet), 0, (struct sockaddr*) &send_addr, sizeof send_addr) < 0)
-                errno_abort("send");
+            
+            if (sendto(fd, (void *)&packetToSend, sizeof(Packet), 0, (struct sockaddr*) &send_addr, sizeof send_addr) < 0)
+                errno_abort("send"); 
+            else {
+                cout << packetToSend.mac_address << endl;
+            }
             if (recvfrom(fd, (void*)&received, sizeof(Packet), 0, (struct sockaddr *) &recv_addr, &recv_addr_len) < 0) {
                 errno_abort("recv");
             } else {
+                cout << "received" << endl;
                 MACHINE newMachine;
                 strcpy(newMachine.hostname, received.payload);
+                memcpy(newMachine.mac_address, received.mac_address, sizeof(received.mac_address));
                 newMachine.status = AWAKEN;
                 newMachine.ip_address = inet_ntoa(recv_addr.sin_addr);
                 if(manager.add(newMachine)) {
@@ -122,12 +139,21 @@ void* discover(void *arg) {
                     manager.printMachines();
                 }
             }
-        }
-         else {
-            if (recv(fd, (void*)&received, sizeof(Packet), 0) < 0) {
+        } 
+        else {
+            if (recvfrom(fd, (void*)&received, sizeof(Packet), 0, (struct sockaddr *) &recv_addr, &recv_addr_len) < 0)  {
                 errno_abort("recv");
             } else {
-                printf("received");
+                cout << "endl" << endl;
+                MACHINE newMachine;
+                strcpy(newMachine.hostname, received.payload);
+                memcpy(newMachine.mac_address, received.mac_address, sizeof(newMachine.mac_address));
+                newMachine.ip_address = inet_ntoa(recv_addr.sin_addr);
+                client.manager = newMachine;
+                client.printManager();
+                if(sendto(fd, (void *)&packetToSend, sizeof(Packet), 0, (struct sockaddr*) &recv_addr, sizeof recv_addr) < 0) {
+                    errno_abort("send");
+                }
             }
             // } else {
             //     if (sendto(fd, (void *)&packetTosend, sizeof(Packet), 0, (struct sockaddr*) &recv_addr, sizeof recv_addr) < 0)

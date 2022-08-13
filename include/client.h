@@ -17,10 +17,11 @@ using namespace std;
 
 class Client {
     private:
-        MACHINE me, manager;
         int sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp, void *newp, size_t newlen);
         int getHostname(char *buf, size_t buflen);
+        unsigned char* getMacAddress();
     public:
+        MACHINE me, manager;
         Client();
         void leave();
         void waitForCommand();

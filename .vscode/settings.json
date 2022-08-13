@@ -69,7 +69,8 @@
         "utility": "cpp",
         "thread": "cpp",
         "any": "cpp",
-        "hash_map": "cpp"
+        "hash_map": "cpp",
+        "__functional_base_03": "cpp"
     },
     "C_Cpp.errorSquiggles": "Disabled"
 }
